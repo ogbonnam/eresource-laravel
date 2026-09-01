@@ -177,7 +177,7 @@
                             value="lesson_note"
                             @selected(old('type') === 'lesson_note')
                         >
-                            Lesson Note
+                            Learning Note
                         </option>
 
                         <option
@@ -198,7 +198,7 @@
                             value="document"
                             @selected(old('type') === 'document')
                         >
-                            Document
+                            Learning Materials (word, excel, powerpoint)
                         </option>
 
                         <option
