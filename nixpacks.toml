@@ -1,8 +1,0 @@
-[phases.build]
-cmds = [
-    "echo 'upload_max_filesize=300M' > php-upload.ini",
-    "echo 'post_max_size=320M' >> php-upload.ini"
-]
-
-[start]
-cmd = "PHP_INI_SCAN_DIR=\"$(php --ini | awk -F': ' '/Scan for additional/ {print $2}'):$(pwd)\" php artisan serve --host=0.0.0.0 --port=8000"
