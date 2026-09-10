@@ -180,12 +180,7 @@
                             Learning Note
                         </option>
 
-                        <option
-                            value="assignment"
-                            @selected(old('type') === 'assignment')
-                        >
-                            Assignment
-                        </option>
+                        
 
                         <option
                             value="pdf"
@@ -544,7 +539,7 @@
                     >
 
                     <p class="mt-2 text-xs text-slate-500">
-                        Maximum file size: 50MB.
+                        Maximum file size: 300MB.
                     </p>
 
                 </div>

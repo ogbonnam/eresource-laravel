@@ -65,7 +65,7 @@ class ResourceController extends Controller
             'file' => [
                 'nullable',
                 'file',
-                'max:51200',
+                'max:307200',
             ],
 
             'url' => [
@@ -374,7 +374,7 @@ class ResourceController extends Controller
             'file' => [
                 'nullable',
                 'file',
-                'max:51200',
+                'max:307200',
             ],
 
             'url' => [
