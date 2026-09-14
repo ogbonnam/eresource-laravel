@@ -230,7 +230,7 @@
                     for="topic"
                     class="block text-sm font-medium text-gray-700"
                 >
-                    Topic <span class="text-red-500">*</span>
+                    Give this lesson plan a name: e.g (Mathematics lesson plan for year 8) <span class="text-red-500">*</span>
                 </label>
 
                 <input
