@@ -41,4 +41,17 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI'),
     ],
 
+    'pdftotext' => [
+        'binary' => env(
+            'PDFTOTEXT_BINARY',
+            'C:\Program Files\xpdf-tools-win\bin64\pdftotext.exe'
+        ),
+    ],
+
+    'ai' => [
+        'endpoint' => env('AI_API_ENDPOINT'),
+        'key' => env('AI_API_KEY'),
+        'model' => env('AI_MODEL'),
+    ],
+
 ];

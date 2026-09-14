@@ -11,6 +11,7 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -42,10 +43,23 @@ class UserResource extends Resource
         return $schema
             ->components([
 
+                /*
+                |--------------------------------------------------------------------------
+                | Name
+                |--------------------------------------------------------------------------
+                */
+
                 TextInput::make('name')
                     ->label('Full Name')
                     ->required()
                     ->maxLength(255),
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Email
+                |--------------------------------------------------------------------------
+                */
 
                 TextInput::make('email')
                     ->label('Email Address')
@@ -58,6 +72,13 @@ class UserResource extends Resource
                     )
                     ->maxLength(255),
 
+
+                /*
+                |--------------------------------------------------------------------------
+                | Role
+                |--------------------------------------------------------------------------
+                */
+
                 Select::make('role')
                     ->label('Role')
                     ->options([
@@ -66,7 +87,90 @@ class UserResource extends Resource
                         'student' => 'Student',
                     ])
                     ->required()
-                    ->native(false),
+                    ->native(false)
+                    ->live()
+                    ->afterStateUpdated(function ($state, callable $set): void {
+                        /*
+                         * Faculty and staff position only apply to teachers.
+                         *
+                         * If an administrator changes a teacher to another
+                         * role, clear the teacher-specific fields.
+                         */
+                        if ($state !== 'teacher') {
+                            $set('faculty_id', null);
+                            $set('staff_position', 'teacher');
+                        }
+                    }),
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Faculty
+                |--------------------------------------------------------------------------
+                |
+                | Only teachers need to belong to a faculty.
+                |
+                */
+
+                Select::make('faculty_id')
+                    ->label('Faculty')
+                    ->relationship(
+                        name: 'faculty',
+                        titleAttribute: 'name',
+                    )
+                    ->searchable()
+                    ->preload()
+                    ->native(false)
+                    ->visible(
+                        fn (Get $get): bool =>
+                            $get('role') === 'teacher'
+                    )
+                    ->required(
+                        fn (Get $get): bool =>
+                            $get('role') === 'teacher'
+                    )
+                    ->helperText(
+                        'Select the faculty this teacher belongs to.'
+                    ),
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Staff Position
+                |--------------------------------------------------------------------------
+                |
+                | This determines whether the teacher is a normal teacher,
+                | HOD or HOF.
+                |
+                */
+
+                Select::make('staff_position')
+                    ->label('Staff Position')
+                    ->options([
+                        'teacher' => 'Teacher',
+                        'hod' => 'HOD',
+                        'hof' => 'HOF',
+                    ])
+                    ->default('teacher')
+                    ->native(false)
+                    ->visible(
+                        fn (Get $get): bool =>
+                            $get('role') === 'teacher'
+                    )
+                    ->required(
+                        fn (Get $get): bool =>
+                            $get('role') === 'teacher'
+                    )
+                    ->helperText(
+                        'HOD/HOF users can vet lesson plans for their faculty.'
+                    ),
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Password
+                |--------------------------------------------------------------------------
+                */
 
                 TextInput::make('password')
                     ->label('Password')
@@ -104,6 +208,7 @@ class UserResource extends Resource
             ->query(
                 User::query()
                     ->with([
+                        'faculty',
                         'enrollments.course.schoolClass',
                     ])
             )
@@ -163,6 +268,49 @@ class UserResource extends Resource
                         }
                     )
                     ->sortable(),
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Faculty
+                |--------------------------------------------------------------------------
+                */
+
+                Tables\Columns\TextColumn::make('faculty.name')
+                    ->label('Faculty')
+                    ->searchable()
+                    ->sortable()
+                    ->placeholder('Not assigned')
+                    ->toggleable(),
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Staff Position
+                |--------------------------------------------------------------------------
+                */
+
+                Tables\Columns\TextColumn::make('staff_position')
+                    ->label('Position')
+                    ->badge()
+                    ->formatStateUsing(
+                        fn (?string $state): string => match ($state) {
+                            'hod' => 'HOD',
+                            'hof' => 'HOF',
+                            'teacher' => 'Teacher',
+                            default => ucfirst($state ?? 'Unknown'),
+                        }
+                    )
+                    ->color(
+                        fn (?string $state): string => match ($state) {
+                            'hod' => 'primary',
+                            'hof' => 'info',
+                            'teacher' => 'gray',
+                            default => 'gray',
+                        }
+                    )
+                    ->placeholder('—')
+                    ->toggleable(),
 
 
                 /*
@@ -228,6 +376,12 @@ class UserResource extends Resource
 
             ->filters([
 
+                /*
+                |--------------------------------------------------------------------------
+                | Role
+                |--------------------------------------------------------------------------
+                */
+
                 Tables\Filters\SelectFilter::make('role')
                     ->label('Role')
                     ->options([
@@ -235,6 +389,44 @@ class UserResource extends Resource
                         'teacher' => 'Teacher',
                         'student' => 'Student',
                     ]),
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Faculty
+                |--------------------------------------------------------------------------
+                */
+
+                Tables\Filters\SelectFilter::make('faculty')
+                    ->label('Faculty')
+                    ->relationship(
+                        name: 'faculty',
+                        titleAttribute: 'name',
+                    )
+                    ->searchable()
+                    ->preload(),
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Staff Position
+                |--------------------------------------------------------------------------
+                */
+
+                Tables\Filters\SelectFilter::make('staff_position')
+                    ->label('Staff Position')
+                    ->options([
+                        'teacher' => 'Teacher',
+                        'hod' => 'HOD',
+                        'hof' => 'HOF',
+                    ]),
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Account Status
+                |--------------------------------------------------------------------------
+                */
 
                 Tables\Filters\SelectFilter::make('status')
                     ->label('Account Status')
@@ -269,9 +461,6 @@ class UserResource extends Resource
                 |--------------------------------------------------------------------------
                 | Edit
                 |--------------------------------------------------------------------------
-                |
-                | Existing Edit action remains unchanged.
-                |
                 */
 
                 EditAction::make(),
@@ -291,10 +480,6 @@ class UserResource extends Resource
                     ->icon('heroicon-o-user-circle')
                     ->color('warning')
 
-                    /*
-                    | Only display this action for teachers/students.
-                    */
-
                     ->visible(
                         fn (User $record): bool =>
                             in_array(
@@ -303,10 +488,6 @@ class UserResource extends Resource
                                 true
                             )
                     )
-
-                    /*
-                    | Confirmation dialog.
-                    */
 
                     ->requiresConfirmation()
 
@@ -330,16 +511,6 @@ class UserResource extends Resource
                         'Cancel'
                     )
 
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Execute impersonation
-                    |--------------------------------------------------------------------------
-                    |
-                    | The actual authentication switch is handled by
-                    | ImpersonationController.
-                    |
-                    */
-
                     ->url(
                         fn (User $record): string =>
                             route(
@@ -347,13 +518,6 @@ class UserResource extends Resource
                                 ['user' => $record]
                             )
                     )
-
-                    /*
-                    | IMPORTANT:
-                    |
-                    | The controller expects POST.
-                    |
-                    */
 
                     ->extraAttributes([
                         'formmethod' => 'POST',

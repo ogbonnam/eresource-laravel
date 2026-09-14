@@ -42,4 +42,17 @@ class SchoolClass extends Model
     { 
         return $this->belongsToMany( Subject::class, 'class_subject', 'class_id', 'subject_id' )->withTimestamps(); 
     }
+
+    public function pastPapers(): HasMany
+    {
+        return $this->hasMany(PastPaper::class, 'class_id');
+    }
+
+    public function questions(): HasMany
+    {
+        return $this->hasMany(
+            Question::class,
+            'class_id'
+        );
+    }
 }

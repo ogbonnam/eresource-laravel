@@ -82,6 +82,11 @@ class Course extends Model
             ->withTimestamps();
     }
 
+    public function lessonPlans(): HasMany
+    {
+        return $this->hasMany(LessonPlan::class);
+    }
+
     protected static function booted(): void
     {
         static::creating(function (Course $course) {

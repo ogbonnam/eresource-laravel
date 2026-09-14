@@ -16,6 +16,8 @@ use App\Http\Controllers\Student\ResourceController as StudentResourceController
 use App\Http\Controllers\Teacher\ResourceController as TeacherResourceController;
 
 use App\Http\Controllers\ImpersonationController;
+use App\Http\Controllers\Teacher\LessonPlanController;
+use App\Http\Controllers\Teacher\LessonPlanVettingController;
 
 
 Route::get('/', function () {
@@ -147,8 +149,44 @@ Route::middleware(['auth', 'role:student'])
             [\App\Http\Controllers\Student\AssignmentController::class, 'downloadAttachment']
         )->name('assignments.attachments.download');
 
-
         
+        // PRACTICE EXAMS / PAST PAPERS
+        Route::get('/practice', [
+            \App\Http\Controllers\Student\PracticeController::class,
+            'index',
+        ])->name('practice.index');
+
+        Route::get('/practice/{pastPaper}', [
+            \App\Http\Controllers\Student\PracticeController::class,
+            'show',
+        ])->name('practice.show');
+
+        Route::get('/practice/{pastPaper}/start', [
+            \App\Http\Controllers\Student\PracticeController::class,
+            'start',
+        ])->name('practice.start');
+
+        Route::get('/practice/{pastPaper}/attempt', [
+            \App\Http\Controllers\Student\PracticeController::class,
+            'attempt',
+        ])->name('practice.attempt');
+
+        Route::post('/practice/{pastPaper}/question/{question}/answer', [
+            \App\Http\Controllers\Student\PracticeController::class,
+            'answer',
+        ])->name('practice.answer');
+
+        Route::post('/practice/{pastPaper}/submit', [
+            \App\Http\Controllers\Student\PracticeController::class,
+            'submit',
+        ])->name('practice.submit');
+
+        Route::get('/practice/{pastPaper}/results', [
+            \App\Http\Controllers\Student\PracticeController::class,
+            'results',
+        ])->name('practice.results');
+
+
     });
 
 /*
@@ -352,6 +390,77 @@ Route::middleware(['auth', 'role:teacher'])
             '/courses/{course}/assignments/{assignment}/submissions/files/{file}/download',
             [\App\Http\Controllers\Teacher\AssignmentSubmissionController::class, 'downloadSubmissionFile']
         )->name('courses.assignments.submissions.files.download');
+    
+        
+
+        // LESSON PLAN MANAGEMENT ROUTES
+
+        Route::get(
+            '/lesson-plans',
+            [LessonPlanController::class, 'index']
+        )->name('lesson-plans.index');
+
+        Route::get(
+            '/lesson-plans/create',
+            [LessonPlanController::class, 'create']
+        )->name('lesson-plans.create');
+
+        Route::post(
+            '/lesson-plans',
+            [LessonPlanController::class, 'store']
+        )->name('lesson-plans.store');
+
+        Route::get(
+            '/lesson-plans/{lessonPlan}/edit',
+            [LessonPlanController::class, 'edit']
+        )->name('lesson-plans.edit');
+
+        Route::put(
+            '/lesson-plans/{lessonPlan}',
+            [LessonPlanController::class, 'update']
+        )->name('lesson-plans.update');
+
+        Route::post(
+            '/lesson-plans/{lessonPlan}/submit',
+            [LessonPlanController::class, 'submit']
+        )->name('lesson-plans.submit');
+
+
+
+
+        // LESSON PLAN VETTING MANAGEMENT ROUTES
+
+
+        Route::get(
+            '/lesson-plan-vetting',
+            [LessonPlanVettingController::class, 'index']
+        )->name('lesson-plan-vetting.index');
+
+        Route::get(
+            '/lesson-plan-vetting/approved',
+            [LessonPlanVettingController::class, 'approved']
+        )->name('lesson-plan-vetting.approved');
+
+        Route::get(
+            '/lesson-plan-vetting/{lessonPlan}',
+            [LessonPlanVettingController::class, 'show']
+        )->name('lesson-plan-vetting.show');
+
+        Route::post(
+            '/lesson-plan-vetting/{lessonPlan}/approve',
+            [LessonPlanVettingController::class, 'approve']
+        )->name('lesson-plan-vetting.approve');
+
+        Route::post(
+            '/lesson-plan-vetting/{lessonPlan}/revision',
+            [LessonPlanVettingController::class, 'requestRevision']
+        )->name('lesson-plan-vetting.revision');
+
+        Route::post(
+            '/lesson-plan-vetting/{lessonPlan}/reject',
+            [LessonPlanVettingController::class, 'reject']
+        )->name('lesson-plan-vetting.reject');
+    
     });
 
 

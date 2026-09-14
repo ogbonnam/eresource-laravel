@@ -315,6 +315,31 @@
 
                     @endif
 
+                    <a
+                        href="{{ route('teacher.lesson-plans.index') }}"
+                        class="rounded-lg px-4 py-2 text-sm font-medium transition
+                        {{ request()->routeIs('teacher.lesson-plans.*')
+                            ? 'bg-slate-100 text-slate-900'
+                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}"
+                    >
+                        Lesson Plans
+                    </a>
+
+                    @if(
+                        auth()->user()->role === 'teacher' &&
+                        in_array(auth()->user()->staff_position, ['hod', 'hof'], true)
+                    )
+                        <a
+                            href="{{ route('teacher.lesson-plan-vetting.index') }}"
+                            class="rounded-lg px-4 py-2 text-sm font-medium transition
+                            {{ request()->routeIs('teacher.lesson-plan-vetting.*')
+                                ? 'bg-slate-100 text-slate-900'
+                                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}"
+                        >
+                            Vet LP
+                        </a>
+                    @endif
+
 
                 @endif
 
@@ -676,6 +701,31 @@
                         </a>
 
 
+                    @endif
+
+                    <a
+                        href="{{ route('teacher.lesson-plans.index') }}"
+                        class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition
+                        {{ request()->routeIs('teacher.lesson-plans.*')
+                            ? 'bg-slate-100 text-slate-900'
+                            : 'text-slate-600 hover:bg-slate-50' }}"
+                    >
+                        Lesson Plans
+                    </a>
+
+                    @if(
+                        auth()->user()->role === 'teacher' &&
+                        in_array(auth()->user()->staff_position, ['hod', 'hof'], true)
+                    )
+                        <a
+                            href="{{ route('teacher.lesson-plan-vetting.index') }}"
+                            class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition
+                            {{ request()->routeIs('teacher.lesson-plan-vetting.*')
+                                ? 'bg-slate-100 text-slate-900'
+                                : 'text-slate-600 hover:bg-slate-50' }}"
+                        >
+                            Vet LP
+                        </a>
                     @endif
 
 

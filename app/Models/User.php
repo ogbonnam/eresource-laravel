@@ -12,12 +12,15 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
     'name',
     'email',
     'password',
     'role',
+    'faculty_id',
+    'staff_position',
 ])]
 #[Hidden([
     'password',
@@ -124,6 +127,21 @@ class User extends Authenticatable implements FilamentUser
             'student_id',
             'class_id'
         )->withTimestamps();
+    }
+
+    public function faculty(): BelongsTo
+    {
+        return $this->belongsTo(Faculty::class);
+    }
+
+    public function lessonPlans(): HasMany
+    {
+        return $this->hasMany(LessonPlan::class, 'teacher_id');
+    }
+
+    public function vettedLessonPlans(): HasMany
+    {
+        return $this->hasMany(LessonPlan::class, 'vetted_by');
     }
 
     

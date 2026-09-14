@@ -47,4 +47,14 @@ class Subject extends Model
     { 
         return $this->hasMany( Course::class, 'subject_id' ); 
     }
+
+    public function pastPapers(): HasMany
+    {
+        return $this->hasMany(PastPaper::class);
+    }
+
+    public function questions(): HasMany
+    {
+        return $this->hasMany(Question::class);
+    }
 }
