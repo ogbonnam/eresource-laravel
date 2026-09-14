@@ -325,7 +325,6 @@ class UserResource extends Resource
 
                 Tables\Columns\TextColumn::make('class')
                     ->label('Class')
-                    ->searchable()
                     ->state(function (User $record): string {
                         return $record->enrollments
                             ->filter(
