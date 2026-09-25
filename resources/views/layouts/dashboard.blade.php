@@ -316,6 +316,16 @@
                     @endif
 
                     <a
+                        href="{{ route('teacher.broadcasts.index') }}"
+                        class="rounded-lg px-4 py-2 text-sm font-medium transition
+                        {{ request()->routeIs('teacher.broadcasts.*')
+                            ? 'bg-slate-100 text-slate-900'
+                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}"
+                    >
+                        Broadcasts
+                    </a>
+
+                    <a
                         href="{{ route('teacher.lesson-plans.index') }}"
                         class="rounded-lg px-4 py-2 text-sm font-medium transition
                         {{ request()->routeIs('teacher.lesson-plans.*')
@@ -702,6 +712,16 @@
 
 
                     @endif
+
+                    <a
+                        href="{{ route('teacher.broadcasts.index') }}"
+                        class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition
+                        {{ request()->routeIs('teacher.broadcasts.*')
+                            ? 'bg-slate-100 text-slate-900'
+                            : 'text-slate-600 hover:bg-slate-50' }}"
+                    >
+                        Broadcasts
+                    </a>
 
                     <a
                         href="{{ route('teacher.lesson-plans.index') }}"

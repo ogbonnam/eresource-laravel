@@ -460,7 +460,40 @@ Route::middleware(['auth', 'role:teacher'])
             '/lesson-plan-vetting/{lessonPlan}/reject',
             [LessonPlanVettingController::class, 'reject']
         )->name('lesson-plan-vetting.reject');
-    
+
+        // Route for broadcast to teachers
+
+       
+
+        
+     
+
+        Route::get(
+            '/broadcasts',
+            [TeacherController::class, 'broadcasts']
+        )->name('broadcasts.index');
+
+        Route::get(
+            '/broadcasts/attachments/{attachment}',
+            [TeacherController::class, 'broadcastAttachment']
+        )->name('broadcasts.attachment');
+
+        Route::get(
+            '/broadcasts/{broadcast}/sheet',
+            [TeacherController::class, 'broadcastSheet']
+        )->name('broadcasts.sheet');
+
+        Route::post(
+            '/broadcasts/{broadcast}/acknowledge',
+            [TeacherController::class, 'acknowledgeBroadcast']
+        )->name('broadcasts.acknowledge');
+
+        Route::get(
+            '/broadcasts/{broadcast}',
+            [TeacherController::class, 'showBroadcast']
+        )->name('broadcasts.show');
+
+
     });
 
 

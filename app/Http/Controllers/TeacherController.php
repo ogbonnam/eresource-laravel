@@ -12,6 +12,13 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
+use App\Models\Broadcast;
+use App\Models\BroadcastAttachment;
+use App\Models\BroadcastRecipient;
+use Illuminate\Support\Facades\Storage;
+
+use App\Models\BroadcastView;
+
 class TeacherController extends Controller
 {
     /**
@@ -427,6 +434,282 @@ class TeacherController extends Controller
             ->with(
                 'success',
                 'Course created successfully.'
+            );
+    }
+
+        /**
+     * Teacher broadcast inbox.
+     */
+    public function broadcasts(): View
+    {
+        $teacher = Auth::user();
+
+        abort_unless(
+            $teacher && $teacher->role === 'teacher',
+            403
+        );
+
+        $broadcasts = Broadcast::query()
+            ->whereNotNull('sent_at')
+            ->whereHas('recipients', function ($query) use ($teacher) {
+                $query->where('teacher_id', $teacher->id);
+            })
+            ->with([
+                'sender',
+                'department',
+                'attachments',
+                'recipients' => function ($query) use ($teacher) {
+                    $query->where('teacher_id', $teacher->id);
+                },
+            ])
+            ->latest('sent_at')
+            ->paginate(15);
+
+        return view(
+            'teacher.broadcasts.index',
+            [
+                'broadcasts' => $broadcasts,
+            ]
+        );
+    }
+
+
+    /**
+     * Show one broadcast and mark it as read.
+     */
+    public function showBroadcast(Broadcast $broadcast): View
+{
+        $teacher = Auth::user();
+
+        abort_unless(
+            $teacher && $teacher->role === 'teacher',
+            403
+        );
+
+        abort_if(
+            is_null($broadcast->sent_at),
+            404
+        );
+
+        $recipient = BroadcastRecipient::query()
+            ->where('broadcast_id', $broadcast->id)
+            ->where('teacher_id', $teacher->id)
+            ->firstOrFail();
+
+        $broadcast->load([
+            'sender',
+            'department',
+            'attachments',
+        ]);
+
+        $now = now();
+
+        /*
+        * -------------------------------------------------------------
+        * Update the recipient summary.
+        * -------------------------------------------------------------
+        */
+
+        $recipient->increment('open_count');
+
+        $recipient->update([
+            'first_opened_at' => $recipient->first_opened_at ?? $now,
+            'last_opened_at' => $now,
+            'read_at' => $recipient->read_at ?? $now,
+        ]);
+
+        /*
+        * -------------------------------------------------------------
+        * Store an individual view event.
+        *
+        * Every time the teacher opens the broadcast, one record is
+        * created here.
+        * -------------------------------------------------------------
+        */
+
+        BroadcastView::create([
+            'broadcast_id' => $broadcast->id,
+            'teacher_id' => $teacher->id,
+            'viewed_at' => $now,
+        ]);
+
+        /*
+        * -------------------------------------------------------------
+        * Refresh the recipient so the view receives the new count.
+        * -------------------------------------------------------------
+        */
+
+        $recipient->refresh();
+
+        return view(
+            'teacher.broadcasts.show',
+            [
+                'broadcast' => $broadcast,
+                'recipient' => $recipient,
+            ]
+        );
+    }
+
+
+    /**
+     * Open a broadcast attachment.
+     */
+    public function broadcastAttachment(
+        BroadcastAttachment $attachment
+    )
+    {
+        $teacher = Auth::user();
+
+        abort_unless(
+            $teacher && $teacher->role === 'teacher',
+            403
+        );
+
+        /*
+        |----------------------------------------------------------------------
+        | SECURITY CHECK
+        |----------------------------------------------------------------------
+        |
+        | The teacher must actually be a recipient of the broadcast
+        | that owns this attachment.
+        |
+        */
+
+        BroadcastRecipient::query()
+            ->where(
+                'broadcast_id',
+                $attachment->broadcast_id
+            )
+            ->where(
+                'teacher_id',
+                $teacher->id
+            )
+            ->firstOrFail();
+
+        /*
+        |----------------------------------------------------------------------
+        | CHECK FILE
+        |----------------------------------------------------------------------
+        */
+
+        $disk = Storage::disk('local');
+
+        abort_unless(
+            $disk->exists($attachment->file_path),
+            404
+        );
+
+        /*
+        |----------------------------------------------------------------------
+        | OPEN FILE INLINE
+        |----------------------------------------------------------------------
+        */
+
+        return response()->file(
+            $disk->path($attachment->file_path),
+            [
+                'Content-Type' =>
+                    $attachment->mime_type
+                    ?: 'application/octet-stream',
+
+                'Content-Disposition' =>
+                    'inline; filename="' .
+                    addslashes($attachment->file_name) .
+                    '"',
+            ]
+        );
+    }
+
+
+    /**
+     * Open the Google Sheet attached to a broadcast.
+     */
+    public function broadcastSheet(Broadcast $broadcast)
+    {
+        $teacher = Auth::user();
+
+        abort_unless(
+            $teacher && $teacher->role === 'teacher',
+            403
+        );
+
+        /*
+        |----------------------------------------------------------------------
+        | SECURITY CHECK
+        |----------------------------------------------------------------------
+        */
+
+        BroadcastRecipient::query()
+            ->where(
+                'broadcast_id',
+                $broadcast->id
+            )
+            ->where(
+                'teacher_id',
+                $teacher->id
+            )
+            ->firstOrFail();
+
+        /*
+        |----------------------------------------------------------------------
+        | CHECK GOOGLE SHEET
+        |----------------------------------------------------------------------
+        */
+
+        abort_unless(
+            filled($broadcast->google_sheet_url),
+            404
+        );
+
+        /*
+        |----------------------------------------------------------------------
+        | REDIRECT
+        |----------------------------------------------------------------------
+        */
+
+        return redirect()->away(
+            $broadcast->google_sheet_url
+        );
+    }
+
+
+    /**
+     * Acknowledge a broadcast.
+     */
+    public function acknowledgeBroadcast(
+        Broadcast $broadcast
+    )
+    {
+        $teacher = Auth::user();
+
+        abort_unless(
+            $teacher && $teacher->role === 'teacher',
+            403
+        );
+
+        $recipient = BroadcastRecipient::query()
+            ->where(
+                'broadcast_id',
+                $broadcast->id
+            )
+            ->where(
+                'teacher_id',
+                $teacher->id
+            )
+            ->firstOrFail();
+
+        $recipient->update([
+            'acknowledged_at' => now(),
+        ]);
+
+        return redirect()
+            ->route(
+                'teacher.broadcasts.show',
+                $broadcast
+            )
+            ->with(
+                'success',
+                'Broadcast acknowledged successfully.'
             );
     }
 }

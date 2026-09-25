@@ -144,6 +144,16 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasMany(LessonPlan::class, 'vetted_by');
     }
 
+    public function sentBroadcasts()
+    {
+        return $this->hasMany(Broadcast::class, 'sender_id');
+    }
+
+    public function broadcastRecipients()
+    {
+        return $this->hasMany(BroadcastRecipient::class, 'teacher_id');
+    }
+
     
     /**
      * Get the attributes that should be cast.

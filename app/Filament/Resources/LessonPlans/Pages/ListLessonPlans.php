@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\LessonPlans\Pages;
 
 use App\Filament\Resources\LessonPlans\LessonPlanResource;
+use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
 class ListLessonPlans extends ListRecords
@@ -11,6 +12,8 @@ class ListLessonPlans extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [];
+        return [
+            CreateAction::make(),
+        ];
     }
 }
