@@ -73,6 +73,10 @@
                         </th>
 
                         <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                            Files
+                        </th>
+
+                        <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                             Date
                         </th>
 
@@ -91,6 +95,8 @@
                 <tbody class="divide-y divide-gray-100 bg-white">
 
                     @forelse($lessonPlans as $lessonPlan)
+
+                        @php($planFiles = $lessonPlan->all_files)
 
                         <tr class="hover:bg-gray-50">
 
@@ -122,6 +128,45 @@
                                 {{ $lessonPlan->topic }}
                             </td>
 
+                            <td class="px-6 py-4">
+
+                                @if(count($planFiles))
+
+                                    <div class="text-xs font-semibold text-gray-700">
+                                        {{ count($planFiles) }} {{ \Illuminate\Support\Str::plural('file', count($planFiles)) }}
+                                    </div>
+
+                                    <ul class="mt-1 space-y-0.5">
+
+                                        @foreach(array_slice($planFiles, 0, 3) as $file)
+                                            <li>
+                                                <a
+                                                    href="{{ $file['url'] }}"
+                                                    target="_blank"
+                                                    title="{{ $file['name'] }}"
+                                                    class="block max-w-[14rem] truncate text-xs font-medium text-indigo-600 hover:text-indigo-700"
+                                                >
+                                                    {{ $file['name'] }}
+                                                </a>
+                                            </li>
+                                        @endforeach
+
+                                    </ul>
+
+                                    @if(count($planFiles) > 3)
+                                        <div class="mt-1 text-xs text-gray-500">
+                                            +{{ count($planFiles) - 3 }} more on the review page
+                                        </div>
+                                    @endif
+
+                                @else
+
+                                    <span class="text-xs text-gray-400">No files</span>
+
+                                @endif
+
+                            </td>
+
                             <td class="px-6 py-4 text-sm text-gray-600">
                                 {{ $lessonPlan->lesson_date?->format('d M Y') ?? '—' }}
                             </td>
@@ -147,7 +192,7 @@
 
                         <tr>
 
-                            <td colspan="6" class="px-6 py-12 text-center">
+                            <td colspan="7" class="px-6 py-12 text-center">
 
                                 <div class="text-sm font-semibold text-gray-900">
                                     No lesson plans awaiting vetting

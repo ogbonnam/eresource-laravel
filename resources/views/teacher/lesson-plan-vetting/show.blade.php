@@ -4,9 +4,7 @@
 
 @section('content')
 
-@php
-    use Illuminate\Support\Facades\Storage;
-@endphp
+@php($planFiles = $lessonPlan->all_files)
 
 <div class="mx-auto max-w-5xl space-y-8">
 
@@ -41,9 +39,9 @@
 
     </div>
 
-    {{-- Teacher / Course information --}}
+    {{-- Teacher / Class / Subject --}}
 
-    <div class="grid gap-6 md:grid-cols-2">
+    <div class="grid gap-6 md:grid-cols-3">
 
         <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 
@@ -65,7 +63,8 @@
 
         </div>
 
-        <div>
+        <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+
             <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-500">
                 Class
             </h2>
@@ -73,9 +72,11 @@
             <p class="mt-2 text-lg font-semibold text-gray-900">
                 {{ $lessonPlan->schoolClass->name ?? '—' }}
             </p>
+
         </div>
 
-        <div>
+        <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+
             <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-500">
                 Subject
             </h2>
@@ -83,6 +84,7 @@
             <p class="mt-2 text-lg font-semibold text-gray-900">
                 {{ $lessonPlan->subject->name ?? '—' }}
             </p>
+
         </div>
 
     </div>
@@ -187,23 +189,52 @@
 
     @endif
 
-    {{-- Supporting document --}}
+    {{-- Supporting documents --}}
 
-    @if($lessonPlan->file_path)
+    @if(count($planFiles))
 
         <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 
             <h2 class="text-lg font-semibold text-gray-900">
-                Supporting Document
+                Supporting Documents
+                <span class="ml-2 text-sm font-normal text-gray-500">
+                    ({{ count($planFiles) }} {{ \Illuminate\Support\Str::plural('file', count($planFiles)) }})
+                </span>
             </h2>
 
-            <a
-                href="{{ Storage::disk('public')->url($lessonPlan->file_path) }}"
-                target="_blank"
-                class="mt-4 inline-flex rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-            >
-                Open Lesson Plan Document
-            </a>
+            <ul class="mt-4 space-y-2">
+
+                @foreach($planFiles as $file)
+
+                    <li class="flex items-center justify-between gap-4 rounded-lg border border-gray-200 px-4 py-3">
+
+                        <div class="min-w-0">
+
+                            <p class="truncate text-sm font-medium text-gray-900">
+                                {{ $file['name'] }}
+                            </p>
+
+                            @if(!empty($file['size']))
+                                <p class="text-xs text-gray-500">
+                                    {{ number_format($file['size'] / 1024 / 1024, 2) }} MB
+                                </p>
+                            @endif
+
+                        </div>
+
+                        <a
+                            href="{{ $file['url'] }}"
+                            target="_blank"
+                            class="shrink-0 rounded-lg border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                        >
+                            {{ strtolower(pathinfo($file['name'], PATHINFO_EXTENSION)) === 'zip' ? 'Download' : 'Open' }}
+                        </a>
+
+                    </li>
+
+                @endforeach
+
+            </ul>
 
         </div>
 

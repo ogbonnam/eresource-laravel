@@ -394,6 +394,7 @@ Route::middleware(['auth', 'role:teacher'])
         
 
         // LESSON PLAN MANAGEMENT ROUTES
+        
 
         Route::get(
             '/lesson-plans',
@@ -424,6 +425,11 @@ Route::middleware(['auth', 'role:teacher'])
             '/lesson-plans/{lessonPlan}/submit',
             [LessonPlanController::class, 'submit']
         )->name('lesson-plans.submit');
+
+        Route::delete(
+            '/lesson-plans/{lessonPlan}',
+            [LessonPlanController::class, 'destroy']
+        )->name('lesson-plans.destroy');
 
 
 

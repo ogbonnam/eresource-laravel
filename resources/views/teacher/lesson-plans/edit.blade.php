@@ -3,9 +3,6 @@
 @section('title', 'Edit Lesson Plan')
 
 @section('content')
-@php
-    use Illuminate\Support\Facades\Storage;
-@endphp
 
 <div class="mx-auto max-w-5xl space-y-8">
 
@@ -169,6 +166,7 @@
                         @endforeach
                     </select>
                 </div>
+
                 <div>
 
                     <label
@@ -300,54 +298,20 @@
 
         </div>
 
+        {{-- ================= LESSON PLAN FILES ================= --}}
+
         <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 
             <h2 class="text-lg font-semibold text-gray-900">
-                Supporting Document
+                Lesson Plan Files
             </h2>
 
-            @if($lessonPlan->file_path)
+            <p class="mt-1 mb-5 text-sm text-gray-500">
+                Tick "Remove" on files you no longer need, and add new files below.
+                Files you leave alone are kept.
+            </p>
 
-                <div class="mt-4 rounded-lg bg-gray-50 p-4">
-
-                    <p class="text-sm font-medium text-gray-700">
-                        Current document
-                    </p>
-
-                    <a
-                        href="{{ Storage::disk('public')->url($lessonPlan->file_path) }}"
-                        target="_blank"
-                        class="mt-1 inline-block text-sm font-semibold text-indigo-600 hover:text-indigo-700"
-                    >
-                        View current document →
-                    </a>
-
-                </div>
-
-            @endif
-
-            <div class="mt-5">
-
-                <label
-                    for="file_path"
-                    class="block text-sm font-medium text-gray-700"
-                >
-                    Replace Document
-                </label>
-
-                <input
-                    id="file_path"
-                    type="file"
-                    name="file_path"
-                    accept=".pdf,.doc,.docx"
-                    class="mt-2 block w-full rounded-lg border border-gray-300 bg-white text-sm text-gray-700 file:mr-4 file:border-0 file:bg-gray-50 file:px-4 file:py-2.5 file:text-sm file:font-medium"
-                >
-
-                <p class="mt-2 text-xs text-gray-500">
-                    Leave empty to keep the current document.
-                </p>
-
-            </div>
+            @include('teacher.lesson-plans.partials.file-uploader', ['lessonPlan' => $lessonPlan])
 
             <div class="mt-6">
 
@@ -380,7 +344,8 @@
 
             <button
                 type="submit"
-                class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
+                id="submit-btn"
+                class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
                 Save Changes
             </button>

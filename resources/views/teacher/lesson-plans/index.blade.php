@@ -53,6 +53,10 @@
                         </th>
 
                         <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                            Files
+                        </th>
+
+                        <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                             Date
                         </th>
 
@@ -70,6 +74,10 @@
 
                     @forelse($lessonPlans as $lessonPlan)
 
+                        @php
+                            $planFiles = $lessonPlan->all_files;
+                        @endphp
+
                         <tr class="hover:bg-gray-50">
 
                             <td class="px-6 py-4">
@@ -80,14 +88,49 @@
                                 <div class="text-xs text-gray-500">
                                     {{ $lessonPlan->subject->name ?? '—' }}
                                 </div>
-
-                                <div class="text-xs text-gray-500">
-                                    {{ $lessonPlan->course->subject->name ?? '' }}
-                                </div>
                             </td>
 
                             <td class="px-6 py-4 text-sm text-gray-700">
                                 {{ $lessonPlan->topic }}
+                            </td>
+
+                            <td class="px-6 py-4">
+
+                                @if(count($planFiles))
+
+                                    <div class="text-xs font-semibold text-gray-700">
+                                        {{ count($planFiles) }} {{ \Illuminate\Support\Str::plural('file', count($planFiles)) }}
+                                    </div>
+
+                                    <ul class="mt-1 space-y-0.5">
+
+                                        @foreach(array_slice($planFiles, 0, 2) as $file)
+                                            <li>
+                                                <a
+                                                    href="{{ $file['url'] }}"
+                                                    target="_blank"
+                                                    title="{{ $file['name'] }}"
+                                                    class="block max-w-[14rem] truncate text-xs font-medium text-indigo-600 hover:text-indigo-700"
+                                                >
+                                                    {{ $file['name'] }}
+                                                </a>
+                                            </li>
+                                        @endforeach
+
+                                    </ul>
+
+                                    @if(count($planFiles) > 2)
+                                        <div class="mt-1 text-xs text-gray-500">
+                                            +{{ count($planFiles) - 2 }} more
+                                        </div>
+                                    @endif
+
+                                @else
+
+                                    <span class="text-xs text-gray-400">No files</span>
+
+                                @endif
+
                             </td>
 
                             <td class="px-6 py-4 text-sm text-gray-600">
@@ -145,6 +188,22 @@
                                             </button>
                                         </form>
 
+                                        <form
+                                            method="POST"
+                                            action="{{ route('teacher.lesson-plans.destroy', $lessonPlan) }}"
+                                            onsubmit="return confirm('Delete this lesson plan and its files? This cannot be undone.')"
+                                        >
+                                            @csrf
+                                            @method('DELETE')
+
+                                            <button
+                                                type="submit"
+                                                class="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50"
+                                            >
+                                                Delete
+                                            </button>
+                                        </form>
+
                                     </div>
 
                                 @else
@@ -162,7 +221,7 @@
                     @empty
 
                         <tr>
-                            <td colspan="5" class="px-6 py-12 text-center">
+                            <td colspan="6" class="px-6 py-12 text-center">
 
                                 <div class="text-sm font-medium text-gray-900">
                                     No lesson plans yet

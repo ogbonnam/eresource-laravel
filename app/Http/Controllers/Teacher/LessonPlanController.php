@@ -7,11 +7,19 @@ use App\Models\Course;
 use App\Models\LessonPlan;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class LessonPlanController extends Controller
 {
+    /** Maximum number of files per lesson plan. */
+    private const MAX_FILES = 20;
+
+    /** Maximum size of one file, in kilobytes (20 MB). */
+    private const MAX_FILE_KB = 20480;
+
     /**
      * Display the teacher's lesson plans.
      */
@@ -143,11 +151,16 @@ class LessonPlanController extends Controller
                 'string',
             ],
 
-            'file_path' => [
+            'files' => [
                 'nullable',
+                'array',
+                'max:' . self::MAX_FILES,
+            ],
+
+            'files.*' => [
                 'file',
-                'mimes:pdf,doc,docx',
-                'max:10240',
+                'mimes:pdf,doc,docx,ppt,pptx,zip',
+                'max:' . self::MAX_FILE_KB,
             ],
         ]);
 
@@ -161,15 +174,15 @@ class LessonPlanController extends Controller
             $validated['subject_id']
         );
 
+        $validated = Arr::except($validated, ['files']);
+
         $validated['teacher_id'] = $user->id;
         $validated['faculty_id'] = $user->faculty_id;
         $validated['status'] = 'draft';
 
-        if ($request->hasFile('file_path')) {
-            $validated['file_path'] = $request
-                ->file('file_path')
-                ->store('lesson-plans', 'public');
-        }
+        $validated['files'] = $this->storeFiles(
+            $request->file('files', [])
+        );
 
         LessonPlan::create($validated);
 
@@ -300,11 +313,26 @@ class LessonPlanController extends Controller
                 'string',
             ],
 
-            'file_path' => [
+            'files' => [
                 'nullable',
+                'array',
+                'max:' . self::MAX_FILES,
+            ],
+
+            'files.*' => [
                 'file',
-                'mimes:pdf,doc,docx',
-                'max:10240',
+                'mimes:pdf,doc,docx,ppt,pptx,zip',
+                'max:' . self::MAX_FILE_KB,
+            ],
+
+            // Paths of existing files the teacher ticked "Remove" on
+            'remove_files' => [
+                'nullable',
+                'array',
+            ],
+
+            'remove_files.*' => [
+                'string',
             ],
         ]);
 
@@ -318,16 +346,46 @@ class LessonPlanController extends Controller
             $validated['subject_id']
         );
 
-        if ($request->hasFile('file_path')) {
+        /*
+         * FILES
+         * -----
+         * Keep the existing files the teacher did not remove,
+         * then add any newly uploaded ones.
+         */
+        $remove = $validated['remove_files'] ?? [];
+        $newFiles = $request->file('files', []);
 
-            if ($lessonPlan->file_path) {
-                Storage::disk('public')
-                    ->delete($lessonPlan->file_path);
-            }
+        $existing = collect($lessonPlan->files ?? []);
 
-            $validated['file_path'] = $request
-                ->file('file_path')
-                ->store('lesson-plans', 'public');
+        $removedFiles = $existing
+            ->filter(fn ($file) => in_array($file['path'], $remove, true));
+
+        $keptFiles = $existing
+            ->reject(fn ($file) => in_array($file['path'], $remove, true));
+
+        $legacyRemoved = $lessonPlan->file_path
+            && in_array($lessonPlan->file_path, $remove, true);
+
+        $legacyKept = $lessonPlan->file_path && ! $legacyRemoved ? 1 : 0;
+
+        if ($keptFiles->count() + $legacyKept + count($newFiles) > self::MAX_FILES) {
+            throw ValidationException::withMessages([
+                'files' => 'A lesson plan can have at most '
+                    . self::MAX_FILES
+                    . ' files. Remove some files or put them in a ZIP file.',
+            ]);
+        }
+
+        $validated = Arr::except($validated, ['files', 'remove_files']);
+
+        $validated['files'] = $keptFiles
+            ->values()
+            ->merge($this->storeFiles($newFiles))
+            ->values()
+            ->all();
+
+        if ($legacyRemoved) {
+            $validated['file_path'] = null;
         }
 
         $validated['teacher_id'] = auth()->id();
@@ -347,7 +405,19 @@ class LessonPlanController extends Controller
             $validated['approved_at'] = null;
         }
 
+        // Remember the old legacy path before the update changes it
+        $oldLegacyPath = $lessonPlan->file_path;
+
         $lessonPlan->update($validated);
+
+        // Delete the removed files from disk
+        foreach ($removedFiles as $file) {
+            Storage::disk('public')->delete($file['path']);
+        }
+
+        if ($legacyRemoved && $oldLegacyPath) {
+            Storage::disk('public')->delete($oldLegacyPath);
+        }
 
         return redirect()
             ->route('teacher.lesson-plans.index')
@@ -355,6 +425,29 @@ class LessonPlanController extends Controller
                 'success',
                 'Lesson plan updated.'
             );
+    }
+
+
+    public function destroy(LessonPlan $lessonPlan): RedirectResponse
+    {
+        $this->authorizeTeacherOwnership($lessonPlan);
+
+        abort_unless(
+            in_array($lessonPlan->status, ['draft', 'revision_requested'], true),
+            403,
+            'Only drafts and plans needing revision can be deleted.'
+        );
+
+        // Delete the uploaded files from disk too
+        foreach ($lessonPlan->all_files as $file) {
+            Storage::disk('public')->delete($file['path']);
+        }
+
+        $lessonPlan->delete();
+
+        return redirect()
+            ->route('teacher.lesson-plans.index')
+            ->with('success', 'Lesson plan deleted.');
     }
 
     /**
@@ -392,6 +485,25 @@ class LessonPlanController extends Controller
             'success',
             'Lesson plan submitted for vetting.'
         );
+    }
+
+    /**
+     * Save uploaded files (same "lesson-plans" folder on the public disk
+     * as before) and return the list to keep in the database.
+     */
+    protected function storeFiles(array $uploads): array
+    {
+        $saved = [];
+
+        foreach ($uploads as $upload) {
+            $saved[] = [
+                'path' => $upload->store('lesson-plans', 'public'),
+                'name' => $upload->getClientOriginalName(),
+                'size' => $upload->getSize(),
+            ];
+        }
+
+        return $saved;
     }
 
     /**
