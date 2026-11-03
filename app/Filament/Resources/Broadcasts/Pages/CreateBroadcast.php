@@ -3,13 +3,16 @@
 namespace App\Filament\Resources\Broadcasts\Pages;
 
 use App\Filament\Resources\Broadcasts\BroadcastResource;
+use App\Mail\BroadcastNotificationMail;
 use App\Models\Broadcast;
-use App\Models\BroadcastAttachment;
 use App\Models\BroadcastRecipient;
 use App\Models\User;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 
 class CreateBroadcast extends CreateRecord
 {
@@ -17,55 +20,37 @@ class CreateBroadcast extends CreateRecord
 
     protected function handleRecordCreation(array $data): Model
     {
-        return DB::transaction(function () use ($data) {
-            /*
-             * -------------------------------------------------------------
-             * 1. Get the selected teachers before removing form-only fields.
-             * -------------------------------------------------------------
-             */
+        /*
+        |--------------------------------------------------------------------------
+        | 1. Save the broadcast and recipients.
+        |--------------------------------------------------------------------------
+        */
+
+        $broadcast = DB::transaction(function () use ($data) {
+
             $teacherIds = $data['teacher_ids'] ?? [];
 
-            /*
-             * -------------------------------------------------------------
-             * 2. Get the uploaded attachment paths.
-             * -------------------------------------------------------------
-             */
             $attachments = $data['attachments'] ?? [];
 
-            /*
-             * -------------------------------------------------------------
-             * 3. Remove fields that do not exist in the broadcasts table.
-             * -------------------------------------------------------------
-             */
             unset(
                 $data['teacher_ids'],
                 $data['attachments']
             );
 
-            /*
-             * -------------------------------------------------------------
-             * 4. Record who sent the broadcast and when.
-             * -------------------------------------------------------------
-             */
             $data['sender_id'] = auth()->id();
+
             $data['sent_at'] = now();
 
-            /*
-             * -------------------------------------------------------------
-             * 5. Create the broadcast itself.
-             * -------------------------------------------------------------
-             */
             $broadcast = Broadcast::create($data);
 
             /*
-             * -------------------------------------------------------------
-             * 6. Determine the actual recipients.
-             *
-             * We snapshot the teachers at send time.
-             * Future changes to departments will not alter this broadcast.
-             * -------------------------------------------------------------
-             */
+            |--------------------------------------------------------------------------
+            | 2. Determine the recipients.
+            |--------------------------------------------------------------------------
+            */
+
             $recipients = match ($broadcast->target_type) {
+
                 'all' => User::query()
                     ->where('role', 'teacher')
                     ->pluck('id'),
@@ -81,45 +66,122 @@ class CreateBroadcast extends CreateRecord
                     ->pluck('id'),
 
                 default => collect(),
+
             };
 
             /*
-             * -------------------------------------------------------------
-             * 7. Create one recipient record for every teacher.
-             * -------------------------------------------------------------
-             */
+            |--------------------------------------------------------------------------
+            | 3. Create recipient tracking records.
+            |--------------------------------------------------------------------------
+            */
+
             foreach ($recipients as $teacherId) {
+
                 BroadcastRecipient::create([
                     'broadcast_id' => $broadcast->id,
                     'teacher_id' => $teacherId,
                     'open_count' => 0,
                 ]);
+
             }
 
             /*
-             * -------------------------------------------------------------
-             * 8. Save attachment information.
-             *
-             * FileUpload has already stored the physical files.
-             * We store their paths and metadata in the database.
-             * -------------------------------------------------------------
-             */
+            |--------------------------------------------------------------------------
+            | 4. Save attachment information.
+            |--------------------------------------------------------------------------
+            */
+
             foreach ($attachments as $attachment) {
+
                 if (! is_string($attachment)) {
                     continue;
                 }
 
-                $disk = \Illuminate\Support\Facades\Storage::disk('local');
+                $disk = Storage::disk('local');
 
                 $broadcast->attachments()->create([
+
                     'file_name' => basename($attachment),
+
                     'file_path' => $attachment,
+
                     'mime_type' => $disk->mimeType($attachment),
+
                     'file_size' => $disk->size($attachment),
+
                 ]);
+
             }
 
             return $broadcast;
+
         });
+
+        /*
+        |--------------------------------------------------------------------------
+        | 5. Queue individual emails AFTER the transaction commits.
+        |--------------------------------------------------------------------------
+        */
+
+        $recipientRecords = BroadcastRecipient::query()
+            ->with('teacher:id,name,email')
+            ->where('broadcast_id', $broadcast->id)
+            ->get();
+
+        foreach ($recipientRecords as $recipient) {
+
+            $teacher = $recipient->teacher;
+
+            /*
+             * Skip teachers without a valid email address.
+             */
+
+            if (
+                ! $teacher ||
+                ! filter_var($teacher->email, FILTER_VALIDATE_EMAIL)
+            ) {
+
+                Log::warning(
+                    'Broadcast email skipped: invalid teacher email.',
+                    [
+                        'broadcast_id' => $broadcast->id,
+                        'teacher_id' => $recipient->teacher_id,
+                    ]
+                );
+
+                continue;
+
+            }
+
+            try {
+
+                Mail::to($teacher->email)->queue(
+                    new BroadcastNotificationMail(
+                        $broadcast,
+                        $teacher
+                    )
+                );
+
+            } catch (\Throwable $exception) {
+
+                /*
+                 * An email queue failure must not undo
+                 * the already-created broadcast.
+                 */
+
+                Log::error(
+                    'Unable to queue broadcast email.',
+                    [
+                        'broadcast_id' => $broadcast->id,
+                        'teacher_id' => $teacher->id,
+                        'error' => $exception->getMessage(),
+                    ]
+                );
+
+            }
+
+        }
+
+        return $broadcast;
     }
 }
