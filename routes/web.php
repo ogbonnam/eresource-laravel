@@ -14,6 +14,7 @@ use App\Http\Controllers\Teacher\AssignmentSubmissionController;
 use App\Http\Controllers\Student\AssignmentController as StudentAssignmentController;
 use App\Http\Controllers\Student\ResourceController as StudentResourceController;
 use App\Http\Controllers\Teacher\ResourceController as TeacherResourceController;
+use App\Http\Controllers\Student\YearGroupEnrollmentController;
 
 use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\Teacher\LessonPlanController;
@@ -100,6 +101,16 @@ Route::middleware(['auth', 'role:student'])
             '/courses/join',
             [CourseEnrollmentController::class, 'store']
         )->name('courses.join.store');
+
+        Route::get('/courses/join-year-group', [
+            YearGroupEnrollmentController::class,
+            'create'
+        ])->name('courses.join-year-group');
+
+        Route::post('/courses/join-year-group', [
+            YearGroupEnrollmentController::class,
+            'store'
+        ])->name('courses.join-year-group.store');
 
         Route::get('/courses', [CourseController::class, 'index'])
             ->name('courses.index');

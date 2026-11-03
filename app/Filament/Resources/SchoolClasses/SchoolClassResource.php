@@ -79,9 +79,18 @@ class SchoolClassResource extends Resource
                     ->unique(
                         ignoreRecord: true
                     ),
+                
 
+                Select::make('year_group_id')
+                    ->label('Year Group')
+                    ->relationship('yearGroup', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->nullable()
+                    ->helperText('Assign this class to a year group for shared student enrollment.'),    
 
                 /*
+                
                 |--------------------------------------------------------------------------
                 | Description
                 |--------------------------------------------------------------------------
@@ -181,8 +190,17 @@ class SchoolClassResource extends Resource
                     ->sortable()
                     ->placeholder('—'),
 
+                
 
+                TextColumn::make('yearGroup.name')
+                    ->label('Year Group')
+                    ->searchable()
+                    ->sortable()
+                    ->placeholder('Not assigned'),
+
+                    
                 /*
+                
                 |--------------------------------------------------------------------------
                 | Subjects
                 |--------------------------------------------------------------------------
